@@ -3,8 +3,17 @@ import matplotlib.pyplot as plt
 
 
 class Data:
-    def __init__(self, frequency, country, indicator, startTime, endTime):
+    def __init__(
+        self,
+        title: str,
+        frequency,
+        country: str,
+        indicator: str,
+        start_time: int,
+        end_time: int,
+    ):
         self.database = "IFS"
+        self.title = title
 
         FREQ_FORMAT = ("A", "Q", "M")
         self.frequency = frequency  # FREQ
@@ -60,6 +69,8 @@ class Data:
         """
         data: list = self.raw_data["CompactData"]["DataSet"]["Series"]["Obs"]
         for d in data:
+            if "@TIME_PERIOD" not in d or "@OBS_VALUE" not in d:
+                continue
             self.data.append({"time": d["@TIME_PERIOD"], "value": d["@OBS_VALUE"]})
         self.serialize_flag = True
 
