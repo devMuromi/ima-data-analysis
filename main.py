@@ -2,6 +2,7 @@ import requests
 import matplotlib.pyplot as plt
 
 
+# https://datahelp.imf.org/knowledgebase/articles/1968408-how-to-use-the-api-python-and-r
 class Data:
     def __init__(
         self,
@@ -9,21 +10,21 @@ class Data:
         frequency,
         country: str,
         indicator: str,
-        start_time: int,
-        end_time: int,
+        start_year: int,
+        end_year: int,
     ):
-        self.database = "IFS"
-        self.title = title
+        self.database: str = "IFS"
+        self.title: str = title
 
         FREQ_FORMAT = ("A", "Q", "M")
         self.frequency = frequency  # FREQ
         if frequency not in FREQ_FORMAT:
             raise Exception("frequency format is not correct")
 
-        self.country = country  # REF_AREA
-        self.indicator = indicator  # INDICATOR
-        self.start_time = start_time
-        self.end_time = end_time
+        self.country: str = country  # REF_AREA
+        self.indicator: str = indicator  # INDICATOR
+        self.start_year: int = start_year
+        self.end_year: int = end_year
 
         self.raw_data = dict()
         self.data = {"time": [], "value": []}
@@ -53,7 +54,7 @@ class Data:
         """
         base = "http://dataservices.imf.org/REST/SDMX_JSON.svc/CompactData"
         key = f"{self.frequency}.{self.country}.{self.indicator}."
-        url = f"{base}/{self.database}/{key}?startPeriod={self.start_time}&endPeriod={self.end_time}"
+        url = f"{base}/{self.database}/{key}?startPeriod={self.start_year}&endPeriod={self.end_year}"
         return url
 
     def _query(self) -> None:
@@ -61,149 +62,133 @@ class Data:
         update raw_data
         """
         res = requests.get(self._create_url())
-        self.raw_data = res.json()
+        try:
+            self.raw_data = res.json()
+        except:
+            print(res.text)
+            raise Exception("data is not json format")
 
     def _serialize(self) -> None:
         """
         update data
         TIME_PERIOD: 2010, 2010-Q1, 2010-01
         """
-        data: list = self.raw_data["CompactData"]["DataSet"]["Series"]["Obs"]
+        try:
+            data: list = self.raw_data["CompactData"]["DataSet"]["Series"]["Obs"]
+        except:
+            print(self.raw_data)
+            raise Exception("data is not correct format. Frequency may be unable")
 
         for d in data:
             if "@TIME_PERIOD" not in d or "@OBS_VALUE" not in d:
                 continue
             if self.frequency == "M":
                 self.data["value"].append(float(d["@OBS_VALUE"]))
-                self.data["time"].append(d["@TIME_PERIOD"])
+                time_data: list(str) = d["@TIME_PERIOD"].split("-")
+                self.data["time"].append(int(time_data[0]) * 12 + int(time_data[1]) - 1)
             elif self.frequency == "Q":
-                for i in range(2, -1, -1):
+                for i in range(-3, 0):
                     self.data["value"].append(float(d["@OBS_VALUE"]))
+                    time_data: list(str) = d["@TIME_PERIOD"].split("-Q")
                     self.data["time"].append(
-                        d["@TIME_PERIOD"][0:5]
-                        + str(int(d["@TIME_PERIOD"][6:7]) * 3 - i)
+                        int(time_data[0]) * 12 + int(time_data[1]) * 3 + i
                     )
+            elif self.frequency == "A":
+                for i in range(12):
+                    self.data["value"].append(float(d["@OBS_VALUE"]))
+                    self.data["time"].append(int(d["@TIME_PERIOD"]) * 12 + i)
+            # 이전 str 방식
+            # if self.frequency == "M":
+            #     self.data["value"].append(float(d["@OBS_VALUE"]))
+            #     self.data["time"].append(d["@TIME_PERIOD"])
+            # elif self.frequency == "Q":
+            #     for i in range(2, -1, -1):
+            #         self.data["value"].append(float(d["@OBS_VALUE"]))
+            #         self.data["time"].append(
+            #             d["@TIME_PERIOD"][0:5]
+            #             + str(int(d["@TIME_PERIOD"][6:7]) * 3 - i)
+            #         )
+            # elif self.frequency == "A":
+            #     for i in range(1, 13):
+            #         self.data["value"].append(float(d["@OBS_VALUE"]))
+            #         self.data["time"].append(d["@TIME_PERIOD"][0:4] + "-" + str(i))
 
         self.serialize_flag = True
 
     def get_x_range(self) -> int:
-        return self.end_time - self.start_time + 1
+        return self.end_year - self.start_year + 1
 
     def get_title(self) -> str:
         return self.title
 
 
 class Series:
-    def __init__(self):
-        self.data_list = []
+    def __init__(self, title: str, start_year: int, end_year: int, interval=1):
+        self.title = title
+        self.start_year = start_year
+        self.end_year = end_year
+        if interval <= 0:
+            raise Exception("interval must be positive")
+        self.interval = interval
+
+        self.data_list: list(Data) = []
+
+        self.x_raw_year: list(int) = []
+        self.x_year: list(str) = []
+        for i in range(start_year, end_year + 1, interval):
+            self.x_raw_year.append(i * 12)
+            self.x_year.append(str(i) + "-1")
 
     def add_data(self, data: Data):
         self.data_list.append(data)
 
     def draw_graph(self):
-        pass
+        plt.title(self.title)
+        plt.yticks([])  # y축 눈금 제거
+        plt.xticks([])  # x축 눈금 제거
+        for i in range(len(self.data_list)):
+            data = self.data_list[i]
+
+            plt.subplot(len(self.data_list), 1, i + 1)
+            plt.plot("time", "value", data=data.get_data(), label=data.get_title())
+            plt.ylabel(data.get_title())
+            plt.xlabel("Time")
+            plt.xlim(self.start_year * 12, self.end_year * 12)
+            plt.xticks(self.x_raw_year, labels=self.x_year)
+            plt.grid(True)
+
+        plt.show()
 
 
-# japan_series = Series()
-# japan_series.add_data(Data("Japan GDP", "Q", "JP", "NGDP_SA_XDC", "1995", "2022"))
-# japan_series.add_data(Data("Japan GDP", "Q", "JP", "ENDA_XDC_USD_RATE", "1995", "2022"))
-# japan_series.add_data(Data("Japan GDP", "Q", "JP", "FPOLM_PA", "1995", "2022"))
-
-
-JAPAN_CODE = "JP"
+##### KOREA #####
+COUTRY_CODE = "KR"
 START_YEAR = 1995
 END_YEAR = 2022
-kr_gdp = Data("Japan GDP", "Q", JAPAN_CODE, "NGDP_SA_XDC", START_YEAR, END_YEAR)
-# print(kr_gdp_data.getData())
-
-kr_usd_rate = Data(
-    "Japan USD rate", "Q", JAPAN_CODE, "ENDA_XDC_USD_RATE", START_YEAR, END_YEAR
+series = Series("Korea Data", START_YEAR, END_YEAR)
+series.add_data(
+    Data("Korea GDP", "Q", COUTRY_CODE, "NGDP_SA_XDC", START_YEAR, END_YEAR)
 )
-# print(kr_usd_rate.getData())
-
-kr_policy_rate = Data(
-    "Japan policy rate", "Q", JAPAN_CODE, "FPOLM_PA", START_YEAR, END_YEAR
+series.add_data(
+    Data("Korea USD rate", "Q", COUTRY_CODE, "ENDA_XDC_USD_RATE", START_YEAR, END_YEAR)
 )
-# print(kr_policy_rate.getData())
+series.add_data(
+    Data("Korea policy rate", "Q", COUTRY_CODE, "FPOLM_PA", START_YEAR, END_YEAR)
+)
+series.draw_graph()
 
 
-def plot_data():
-    # 데이터 가공
-    kr_gdp_data = kr_gdp.get_data()
-    kr_usd_rate_data = kr_usd_rate.get_data()
-    kr_policy_rate_data = kr_policy_rate.get_data()
-
-    # time_list = [data["time"] for data in kr_gdp_data]
-    # value_list = [data["value"] for data in kr_gdp_data]
-
-    # plt.plot(time_list, value_list, label=kr_gdp.get_title())
-    plt.subplot(3, 1, 1)
-    plt.plot("time", "value", data=kr_gdp.get_data(), label=kr_gdp.get_title())
-    plt.ylabel(kr_gdp.get_title())
-    plt.xlabel("Time")
-    plt.xticks(["1995-1", "2000-1", "2005-1", "2010-1", "2015-1", "2020-1"])
-
-    plt.subplot(3, 1, 2)
-    plt.plot(
-        "time", "value", data=kr_usd_rate.get_data(), label=kr_usd_rate.get_title()
-    )
-    plt.ylabel(kr_usd_rate.get_title())
-    plt.xlabel("Time")
-    plt.xticks(["1995-1", "2000-1", "2005-1", "2010-1", "2015-1", "2020-1"])
-
-    plt.subplot(3, 1, 3)
-    plt.plot(
-        "time",
-        "value",
-        data=kr_policy_rate.get_data(),
-        label=kr_policy_rate.get_title(),
-    )
-    plt.ylabel(kr_policy_rate.get_title())
-    plt.xlabel("Time")
-    plt.xticks(["1995-1", "2000-1", "2005-1", "2010-1", "2015-1", "2020-1"])
-
-    plt.show()
-
-    # # 데이터 길이를 맞추기 위해 빈 데이터에 0 값 채우기
-    # max_length = max(len(kr_gdp_data), len(kr_usd_rate_data), len(kr_policy_rate_data))
-    # kr_gdp_data += [{"time": "", "value": "0"}] * (max_length - len(kr_gdp_data))
-    # kr_usd_rate_data += [{"time": "", "value": "0"}] * (
-    #     max_length - len(kr_usd_rate_data)
-    # )
-    # kr_policy_rate_data += [{"time": "", "value": "0"}] * (
-    #     max_length - len(kr_policy_rate_data)
-    # )
-
-    # times = [data["time"] for data in kr_gdp_data]
-    # gdp_values = [int(data["value"]) for data in kr_gdp_data]
-    # usd_rate_values = [float(data["value"]) for data in kr_usd_rate_data]
-    # policy_rate_values = [float(data["value"]) for data in kr_policy_rate_data]
-
-    # # 그래프 그리기
-    # fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 18))
-
-    # ax1.plot(times, gdp_values, marker="o", color="b", label="GDP Data")
-    # ax1.set_ylabel("GDP Value")
-    # ax1.set_title("Korea GDP Data")
-    # ax1.legend()
-
-    # ax2.plot(
-    #     times, usd_rate_values, marker="o", color="g", label="USD Exchange Rate Data"
-    # )
-    # ax2.set_ylabel("Exchange Rate")
-    # ax2.set_title("Korea USD Exchange Rate Data")
-    # ax2.legend()
-
-    # ax3.plot(times, policy_rate_values, marker="o", color="r", label="Policy Rate Data")
-    # ax3.set_xlabel("Time")
-    # ax3.set_ylabel("Policy Rate")
-    # ax3.set_title("Korea Policy Rate Data")
-    # ax3.legend()
-
-    # plt.xticks(rotation=45)  # x축 라벨 회전
-    # plt.tight_layout()
-    # plt.show()
-
-
-# 그래프 그리기 함수 호출
-plot_data()
+##### JAPAN #####
+COUTRY_CODE = "JP"
+START_YEAR = 1995
+END_YEAR = 2022
+japan_series = Series("Japan Data", START_YEAR, END_YEAR)
+japan_series.add_data(
+    Data("Japan GDP", "Q", COUTRY_CODE, "NGDP_SA_XDC", START_YEAR, END_YEAR)
+)
+japan_series.add_data(
+    Data("Japan USD rate", "Q", COUTRY_CODE, "ENDA_XDC_USD_RATE", START_YEAR, END_YEAR)
+)
+japan_series.add_data(
+    Data("Japan policy rate", "Q", COUTRY_CODE, "FPOLM_PA", START_YEAR, END_YEAR)
+)
+japan_series.draw_graph()
