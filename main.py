@@ -26,9 +26,9 @@ from excel import Excel
 COUTRY_CODE = "KR"
 START_YEAR = 1995
 END_YEAR = 2022
-series = Excel("Korea Data", START_YEAR, END_YEAR, "F")
+series = Excel("Korea Data", START_YEAR, END_YEAR, "M")
 series.add_data(
-    Data("Korea GDP", "Q", COUTRY_CODE, "NGDP_SA_XDC", START_YEAR, END_YEAR)
+    Data("Korea GDP", "Q", COUTRY_CODE, "NGDP_SA_XDC", START_YEAR, END_YEAR, "Sum")
 )
 series.add_data(
     Data("Korea USD rate", "Q", COUTRY_CODE, "ENDA_XDC_USD_RATE", START_YEAR, END_YEAR)

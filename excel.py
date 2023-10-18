@@ -1,6 +1,7 @@
 from data import Data, Frequency
 from series import Series
 from openpyxl import Workbook
+import datetime
 
 
 class Excel(Series):
@@ -27,13 +28,15 @@ class Excel(Series):
             time = [
                 "time:" + freq,
             ]
-
             for t in data.get_convert_data(self.frequency)["time"]:
                 time.append(Data.convert_time(t, freq))
             ws.append(time)
+            print(time)
+
             value = [data.get_title()]
             value.extend(data.get_convert_data(self.frequency)["value"])
             ws.append(value)
             ws.append([])
 
-        wb.save(self.title + "_economic_data.xlsx")
+        now = datetime.datetime.now()
+        wb.save(self.title + "_economic_data" + now.strftime("%d%m%y_%H%M") + ".xlsx")

@@ -139,6 +139,7 @@ class Data:
                     continue
                 self.quarterly_data["time"].append(t)
                 self.quarterly_data["value"].extend(self._convert_value(values, 1))
+        self.quarterly_data_flag = True
 
     def _convert_monthly_data(self):
         if self.frequency == "A":
@@ -155,10 +156,11 @@ class Data:
                     self._convert_value([self.get_data()["value"][i]], 3)
                 )
                 self.monthly_data["time"].extend(
-                    [self.get_data()["time"][i] * 4 + j for j in range(3)]
+                    [self.get_data()["time"][i] * 3 + j for j in range(3)]
                 )
         elif self.frequency == "M":
             self.monthly_data = self.get_data()
+        self.monthly_data_flag = True
 
     def _create_url(self) -> str:
         """
