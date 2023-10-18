@@ -4,9 +4,10 @@ from StrEnum import StrEnum
 
 
 class Frequency(StrEnum):
-    A = enum.auto()
-    Q = enum.auto()
-    M = enum.auto()
+    A = enum.auto()  # annual
+    Q = enum.auto()  # quarterly
+    M = enum.auto()  # monthly
+    F = enum.auto()  # free
 
 
 class ConvertType(StrEnum):
@@ -62,20 +63,29 @@ class Data:
             raise Exception("data is not serialized. please call serialize method")
         return self.data
 
-    def get_annual_data(self) -> dict:
-        if self.annual_data_flag == False:
-            self._convert_annual_data()
-        return self.annual_data
+    def get_convert_data(self, frequency: Frequency) -> dict:
+        if frequency == Frequency.A:
+            if self.annual_data_flag == False:
+                self._convert_annual_data()
+            return self.annual_data
+        if frequency == Frequency.Q:
+            if self.quarterly_data_flag == False:
+                self._convert_quarterly_data()
+            return self.quarterly_data
+        if frequency == Frequency.M:
+            if self.monthly_data_flag == False:
+                self._convert_monthly_data()
+            return self.monthly_data
+        if frequency == Frequency.F:
+            return self.get_data()
 
-    def get_quarterly_data(self) -> dict:
-        if self.quarterly_data_flag == False:
-            self._convert_quarterly_data()
-        return self.quarterly_data
-
-    def get_monthly_data(self) -> dict:
-        if self.monthly_data_flag == False:
-            self._convert_monthly_data()
-        return self.monthly_data
+    def convert_time(time: int, frequency: Frequency) -> str:
+        if frequency == Frequency.A:
+            return str(time)
+        if frequency == Frequency.Q:
+            return Data.convert_quartely_time(time)
+        if frequency == Frequency.M:
+            return Data.convert_monthly_time(time)
 
     def convert_quartely_time(time: int) -> str:
         return f"{time // 4}-Q{time % 4 + 1}"
@@ -106,30 +116,47 @@ class Data:
 
     def _convert_quarterly_data(self) -> None:
         if self.frequency == "A":
-            for d in self.get_data():
-                self.quarterly_data["value"].extend(self._convert_value(d["value"], 4))
+            for i in range(len(self.get_data()["time"])):
+                self.quarterly_data["value"].extend(
+                    self._convert_value([self.get_data()["value"][i]], 4)
+                )
                 self.quarterly_data["time"].extend(
-                    [d["time"] * 4 + i for i in range(4)]
+                    [self.get_data()["time"][i] * 4 + j for j in range(4)]
                 )
         elif self.frequency == "Q":
             self.quarterly_data = self.get_data()
         elif self.frequency == "M":
-            """
-            not implemented
-            """
-            pass
+            for t in range(self.start_year * 4, self.end_year * 4 + 4):
+                count = 0
+                values = []
+                for i in range(3):
+                    if t * 3 + i in self.data["time"]:
+                        count += 1
+                        values.append(
+                            self.data["value"][self.data["time"].index(t * 3 + i)]
+                        )
+                if count == 0:
+                    continue
+                self.quarterly_data["time"].append(t)
+                self.quarterly_data["value"].extend(self._convert_value(values, 1))
 
     def _convert_monthly_data(self):
         if self.frequency == "A":
-            for d in self.get_data():
-                self.monthly_data["value"].extend(self._convert_value(d["value"], 12))
+            for i in range(len(self.get_data()["time"])):
+                self.monthly_data["value"].extend(
+                    self._convert_value([self.get_data()["value"][i]], 12)
+                )
                 self.monthly_data["time"].extend(
-                    [d["time"] * 12 + i for i in range(12)]
+                    [self.get_data()["time"][i] * 4 + j for j in range(12)]
                 )
         elif self.frequency == "Q":
-            for d in self.get_data():
-                self.monthly_data["value"].extend(self._convert_value(d["value"], 3))
-                self.monthly_data["time"].extend([d["time"] * 3 + i for i in range(3)])
+            for i in range(len(self.get_data()["time"])):
+                self.monthly_data["value"].extend(
+                    self._convert_value([self.get_data()["value"][i]], 3)
+                )
+                self.monthly_data["time"].extend(
+                    [self.get_data()["time"][i] * 4 + j for j in range(3)]
+                )
         elif self.frequency == "M":
             self.monthly_data = self.get_data()
 
