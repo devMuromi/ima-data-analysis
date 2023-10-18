@@ -31,7 +31,6 @@ class Excel(Series):
             for t in data.get_convert_data(self.frequency)["time"]:
                 time.append(Data.convert_time(t, freq))
             ws.append(time)
-            print(time)
 
             value = [data.get_title()]
             value.extend(data.get_convert_data(self.frequency)["value"])
@@ -39,4 +38,4 @@ class Excel(Series):
             ws.append([])
 
         now = datetime.datetime.now()
-        wb.save(self.title + "_economic_data" + now.strftime("%d%m%y_%H%M") + ".xlsx")
+        wb.save(self.title + now.strftime("%d_%m%y_%H%M") + ".xlsx")

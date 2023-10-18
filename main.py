@@ -2,7 +2,6 @@ from data import Data
 from graph import Graph
 from excel import Excel
 
-
 # https://datahelp.imf.org/knowledgebase/articles/1968408-how-to-use-the-api-python-and-r
 # https://data.imf.org/
 
@@ -37,6 +36,7 @@ series.add_data(
     Data("Korea policy rate", "Q", COUTRY_CODE, "FPOLM_PA", START_YEAR, END_YEAR)
 )
 series.create_excel()
+print("엑셀 출력 완료")
 
 
 ##### JAPAN #####
