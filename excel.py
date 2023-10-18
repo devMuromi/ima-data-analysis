@@ -38,4 +38,4 @@ class Excel(Series):
             ws.append([])
 
         now = datetime.datetime.now()
-        wb.save(self.title + now.strftime("%d_%m%y_%H%M") + ".xlsx")
+        wb.save(self.title + now.strftime("_%y%m%d_%H%M") + ".xlsx")
